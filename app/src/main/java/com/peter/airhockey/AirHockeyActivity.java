@@ -125,7 +125,7 @@ public class AirHockeyActivity extends AppCompatActivity {
 
         private AirHockeyRenderer(Context context) {
             this.context = context;
-
+            //在本地内存创建一个缓冲区，并且将顶点位置数组复制到缓冲区
             vertexData = ByteBuffer
                     .allocateDirect(tableVerticesWithTriangles.length * BYTES_PER_FLOAT)
                     .order(ByteOrder.nativeOrder())
@@ -147,21 +147,21 @@ public class AirHockeyActivity extends AppCompatActivity {
             int fragmentShader = SharderHelper.compileFragmentSharder(fragmentShaderSource);
             //3. 把着色器一起链接进OpenGL程序
             program = SharderHelper.linkProgram(vertexShader,fragmentShader);
-
+            //4. 验证程序
             if(LoggerConfig.ON) {
                 SharderHelper.validateProgram(program);
             }
-
+            //5.使用程序
             glUseProgram(program);
-
+            //6.获取uniform和attribute的位置
             uColorLocation = glGetUniformLocation(program, U_COLOR);
 
             aPositionLocation = glGetAttribLocation(program, A_POSITION);
-
+            //每个缓冲区都有它内部的指针，设置起始位置
             vertexData.position(0);
-
+            //6.告诉OpenGL，它可以在缓冲区找到对应a_Position位置
             glVertexAttribPointer(aPositionLocation, POSITION_COMPONMENT_COUNT, GL_FLOAT, false, 0, vertexData);
-
+            //7.使能顶点数组
             glEnableVertexAttribArray(aPositionLocation);
         }
 
