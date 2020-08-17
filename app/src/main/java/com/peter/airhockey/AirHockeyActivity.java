@@ -4,9 +4,9 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.ActivityManager;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.ConfigurationInfo;
 import android.opengl.GLSurfaceView;
+import android.opengl.Matrix;
 import android.os.Bundle;
 import android.widget.Toast;
 
@@ -25,7 +25,6 @@ import static android.opengl.GLES20.GL_COLOR_BUFFER_BIT;
 import static android.opengl.GLES20.GL_FLOAT;
 import static android.opengl.GLES20.GL_LINES;
 import static android.opengl.GLES20.GL_POINTS;
-import static android.opengl.GLES20.GL_TRIANGLES;
 import static android.opengl.GLES20.GL_TRIANGLE_FAN;
 import static android.opengl.GLES20.glClear;
 import static android.opengl.GLES20.glClearColor;
@@ -33,7 +32,7 @@ import static android.opengl.GLES20.glDrawArrays;
 import static android.opengl.GLES20.glEnableVertexAttribArray;
 import static android.opengl.GLES20.glGetAttribLocation;
 import static android.opengl.GLES20.glGetUniformLocation;
-import static android.opengl.GLES20.glUniform4f;
+import static android.opengl.GLES20.glUniformMatrix4fv;
 import static android.opengl.GLES20.glUseProgram;
 import static android.opengl.GLES20.glVertexAttribPointer;
 import static android.opengl.GLES20.glViewport;
@@ -46,7 +45,6 @@ public class AirHockeyActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-//        setContentView(R.layout.activity_main);
         mGLSurfaceView = new GLSurfaceView(this);
 
         if(checkSupportES2()) {
@@ -97,37 +95,42 @@ public class AirHockeyActivity extends AppCompatActivity {
 
         private final FloatBuffer vertexData;
 
+        //顶点着色器名字
         private static final String A_COLOR = "a_Color";
+
+        private static final String A_POSITION = "a_Position";
+
+        private static final String U_MATRIX = "u_Matrix";
+
+        //保存着色器中属性的位置
+        private int aColorLocation;
+
+        private int aPositionLocation;
+
+        private int uMatrixLocation;
 
         private static final int COLOR_COMPONMENT_COUNT = 3;
 
         private static final int STRIDE = (POSITION_COMPONMENT_COUNT + COLOR_COMPONMENT_COUNT) * BYTES_PER_FLOAT;
 
-//        private static final String U_COLOR = "u_Color";
-
-        private static final String A_POSITION = "a_Position";
-
-        private int aColorLocation;
-
-        private int uColorLocation;
-
-        private int aPositionLocation;
+        //顶点数组保存那个矩阵
+        final float[] projectionMatrix = new float[16];
 
         float[] tableVerticesWithTriangles = {
                 //Triangle FAN
                 0f, 0f, 1f, 1f, 1f,
-                -0.5f, -0.5f, 0.7f, 0.7f, 0.7f,
-                0.5f, -0.5f, 0.7f, 0.7f, 0.7f,
-                0.5f, 0.5f, 0.7f, 0.7f, 0.7f,
-                -0.5f, 0.5f, 0.7f, 0.7f, 0.7f,
-                -0.5f, -0.5f, 0.7f, 0.7f, 0.7f,
+                -0.5f, -0.8f, 0.7f, 0.7f, 0.7f,
+                0.5f, -0.8f, 0.7f, 0.7f, 0.7f,
+                0.5f, 0.8f, 0.7f, 0.7f, 0.7f,
+                -0.5f, 0.8f, 0.7f, 0.7f, 0.7f,
+                -0.5f, -0.8f, 0.7f, 0.7f, 0.7f,
 
                 //Line 1
                 -0.5f, 0f, 1f, 0f, 0f,
                 0.5f, 0f, 1f, 0f, 0f,
                 //Mallets
-                0f, -0.25f, 0f, 0f, 1f,
-                0f, 0.25f, 1f, 0f, 0f,
+                0f, -0.4f, 0f, 0f, 1f,
+                0f, 0.4f, 1f, 0f, 0f,
         };
 
         private int program;
@@ -167,6 +170,8 @@ public class AirHockeyActivity extends AppCompatActivity {
 
             aPositionLocation = glGetAttribLocation(program, A_POSITION);
 
+            uMatrixLocation = glGetUniformLocation(program, U_MATRIX);
+
             //每个缓冲区都有它内部的指针，设置起始位置
             vertexData.position(0);
 
@@ -187,12 +192,20 @@ public class AirHockeyActivity extends AppCompatActivity {
         @Override
         public void onSurfaceChanged(GL10 gl10, int width, int height) {
             glViewport(0, 0, width, height);
+
+            //创建正交矩阵
+            final float aspectRatio = width > height ? (float)width / (float)height : (float)height / (float)width;
+
+            if (width > height) Matrix.orthoM(projectionMatrix, 0, -aspectRatio, aspectRatio, -1f, 1f, -1f, 1f);
+            else Matrix.orthoM(projectionMatrix, 0, -1f, 1f, aspectRatio, -aspectRatio, -1f, 1f);
         }
 
         @Override
         public void onDrawFrame(GL10 gl10) {
 
             glClear(GL_COLOR_BUFFER_BIT);
+            //
+            glUniformMatrix4fv(uMatrixLocation,1,false,projectionMatrix,0);
 
             //前6个点绘制三角形
             glDrawArrays(GL_TRIANGLE_FAN,0,6);
