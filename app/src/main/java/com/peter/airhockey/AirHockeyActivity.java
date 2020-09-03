@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.widget.Toast;
 
 import com.peter.airhockey.util.LoggerConfig;
+import com.peter.airhockey.util.MatrixHelper;
 import com.peter.airhockey.util.SharderHelper;
 import com.peter.airhockey.util.TextResourceReader;
 
@@ -114,7 +115,9 @@ public class AirHockeyActivity extends AppCompatActivity {
         private static final int STRIDE = (POSITION_COMPONMENT_COUNT + COLOR_COMPONMENT_COUNT) * BYTES_PER_FLOAT;
 
         //顶点数组保存那个矩阵
-        final float[] projectionMatrix = new float[16];
+        private final float[] projectionMatrix = new float[16];
+
+        private final float[] modelMatrix = new float[16];
 
         float[] tableVerticesWithTriangles = {
                 //Triangle FAN
@@ -194,10 +197,23 @@ public class AirHockeyActivity extends AppCompatActivity {
             glViewport(0, 0, width, height);
 
             //创建正交矩阵
-            final float aspectRatio = width > height ? (float)width / (float)height : (float)height / (float)width;
+            /*final float aspectRatio = width > height ? (float)width / (float)height : (float)height / (float)width;
 
             if (width > height) Matrix.orthoM(projectionMatrix, 0, -aspectRatio, aspectRatio, -1f, 1f, -1f, 1f);
-            else Matrix.orthoM(projectionMatrix, 0, -1f, 1f, aspectRatio, -aspectRatio, -1f, 1f);
+            else Matrix.orthoM(projectionMatrix, 0, -1f, 1f, -aspectRatio, aspectRatio, -1f, 1f);*/
+
+            //以45度视野创建透视投影矩阵,这个视锥体从Z值-1开始,-10结束
+            MatrixHelper.perspectiveM(projectionMatrix, 45, (float)width / (float)height, 1f, 10f);
+
+            //不要硬编码Z值,通过平移矩阵把桌子移出来,构建模型矩阵
+            Matrix.setIdentityM(modelMatrix, 0);
+            Matrix.translateM(modelMatrix, 0, 0f,0f, -2.5f);
+            Matrix.rotateM(modelMatrix, 0, -60f, 1f, 0f, 0f);
+
+            //用临时矩阵保存,再copy到投影矩阵
+            final float[] temp = new float[16];
+            Matrix.multiplyMM(temp, 0, projectionMatrix, 0, modelMatrix, 0);
+            System.arraycopy(temp, 0, projectionMatrix, 0, temp.length);
         }
 
         @Override
@@ -205,7 +221,7 @@ public class AirHockeyActivity extends AppCompatActivity {
 
             glClear(GL_COLOR_BUFFER_BIT);
             //
-            glUniformMatrix4fv(uMatrixLocation,1,false,projectionMatrix,0);
+            glUniformMatrix4fv(uMatrixLocation,1,false, projectionMatrix,0);
 
             //前6个点绘制三角形
             glDrawArrays(GL_TRIANGLE_FAN,0,6);
